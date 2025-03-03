@@ -1,0 +1,45 @@
+name: Build Kivy APK
+
+on:
+  push:
+    branches:
+      - main  # Change to the branch you use
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y python3-pip git zip unzip openjdk-17-jdk
+        pip install --upgrade pip setuptools wheel
+        pip install buildozer cython
+        
+    - name: Setup Buildozer and NDK
+      run: |
+        sudo apt install -y python3-venv libffi-dev libssl-dev
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install buildozer
+        buildozer init
+
+    - name: Build APK
+      run: |
+        source venv/bin/activate
+        buildozer android debug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: built-apk
+        path: bin/*.apk
