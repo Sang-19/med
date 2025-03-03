@@ -29,11 +29,13 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y openjdk-17-jdk wget unzip
-        mkdir -p $HOME/android-sdk/cmdline-tools
-        cd $HOME/android-sdk/cmdline-tools
+        mkdir -p $HOME/android-sdk/cmdline-tools/latest
+        cd $HOME/android-sdk/cmdline-tools/latest
         wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O tools.zip
-        unzip tools.zip -d latest
+        unzip tools.zip
         rm tools.zip
+        mv cmdline-tools/* .  # Move contents up one level
+        rmdir cmdline-tools    # Remove the empty directory
         export ANDROID_HOME=$HOME/android-sdk
         export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
         echo "export ANDROID_HOME=$ANDROID_HOME" >> $HOME/.bashrc
@@ -41,6 +43,7 @@ jobs:
         source $HOME/.bashrc
         yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
         $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+
 
     - name: Setup Buildozer
       run: |
