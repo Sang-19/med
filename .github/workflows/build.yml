@@ -1,22 +1,73 @@
-    - name: Install Android SDK & Build Tools
-      run: |
-        sudo apt update
-        sudo apt install -y openjdk-17-jdk wget unzip
-        mkdir -p $HOME/android-sdk/cmdline-tools/latest
-        cd $HOME/android-sdk/cmdline-tools/latest
-        wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O tools.zip
-        unzip tools.zip
-        rm tools.zip
-        mv cmdline-tools/* .  # Fix nested folder issue
-        rmdir cmdline-tools    # Clean up empty folder
-        export ANDROID_HOME=$HOME/android-sdk
-        export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-        echo "export ANDROID_HOME=$ANDROID_HOME" >> $HOME/.bashrc
-        echo "export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $HOME/.bashrc
-        source $HOME/.bashrc
+name: Build Android APK
 
-        # Accept licenses automatically
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
-        # Install required SDK components
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-31" "build-tools;36.0.0-rc5"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y openjdk-17-jdk python3-pip wget unzip
+
+      - name: Install Buildozer & Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython virtualenv
+
+      - name: Set Up Android SDK & Accept Licenses
+        run: |
+          # Define SDK path
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+
+          # Download Android SDK command-line tools
+          mkdir -p $ANDROID_HOME/cmdline-tools/latest
+          cd $ANDROID_HOME/cmdline-tools/latest
+          wget https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip -O tools.zip
+          unzip tools.zip
+          rm tools.zip
+          mv cmdline-tools/* .  # Fix nested folder issue
+          rmdir cmdline-tools    # Clean up empty folder
+
+          # Add environment variables to bashrc
+          echo "export ANDROID_HOME=$ANDROID_HOME" >> $HOME/.bashrc
+          echo "export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH" >> $HOME/.bashrc
+          source $HOME/.bashrc
+
+          # Accept SDK licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+          # Install required SDK components
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-31" "build-tools;36.0.0-rc5"
+
+      - name: Initialize Buildozer
+        run: |
+          buildozer init
+
+      - name: Build APK
+        run: |
+          buildozer -v android debug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-apk
+          path: bin/*.apk
